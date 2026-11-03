@@ -512,12 +512,14 @@ export function openSignatureDialog({ title = 'Add your signature', subtitle = '
           button.addEventListener('click', (event) => {
             event.stopPropagation();
             const id = button.dataset.delSig;
-            const next = loadSignatures().filter((item) => item.id !== id);
+            const stored = loadSignatures();
+            const removed = stored.find((item) => item.id === id);
+            const next = stored.filter((item) => item.id !== id);
             if (!storeSignatures(next)) {
               toast('The signature could not be removed from local storage.', 'error');
               return;
             }
-            if (S.activeSignature?.id === id) S.activeSignature = null;
+            if (S.activeSignature?.id === id || (removed && S.activeSignature?.dataUrl === removed.dataUrl)) S.activeSignature = null;
             nodeFromId(id)?.remove();
             toast('Signature removed.', 'info');
             if (!bodyEl.querySelector('.saved-sig')) bodyEl.querySelector('.sig-saved-block')?.remove();
