@@ -497,7 +497,7 @@ function startDraw(event, canvas, pageEl, pageIndex, point) {
   const before = History.snapshot('annotations');
   let overlay;
   if (tool === 'redact') {
-    overlay = baseOverlay('redact', point.x, point.y, 0, 0, { fill: '#000000', opacity: 1 });
+    overlay = baseOverlay('redact', point.x, point.y, 0, 0, { fill: S.opts.redactFill || '#000000', opacity: 1 });
   } else if (tool === 'whiteout') {
     overlay = baseOverlay('whiteout', point.x, point.y, 0, 0, { fill: '#ffffff', opacity: 1 });
   } else {

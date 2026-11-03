@@ -23,6 +23,18 @@ function imageFor(src, page) {
   return img.complete && img.naturalWidth ? img : null;
 }
 
+export async function preloadPageImages(pageIndex) {
+  const objects = S.overlays.get(pageIndex) || [];
+  await Promise.all(objects.filter((obj) => ['signature', 'initials', 'image'].includes(obj.type)).map(async (obj) => {
+    if (!obj.src) throw new Error('An image or signature is missing its data.');
+    imageFor(obj.src, pageIndex);
+    const img = imageCache.get(obj.src);
+    if (!img) throw new Error('An image or signature could not be loaded.');
+    try { await img.decode(); } catch { throw new Error('An image or signature could not be loaded.'); }
+    if (!img.naturalWidth) throw new Error('An image or signature could not be loaded.');
+  }));
+}
+
 export function clearImageCache() {
   imageCache.clear();
 }
@@ -220,7 +232,7 @@ function drawSigBox(ctx, obj) {
 
 export function paintOverlay(ctx, obj, pageIndex) {
   if (!obj || obj.id === S.editingId) return;
-  const opacity = obj.opacity ?? 1;
+  const opacity = obj.type === 'redact' ? 1 : (obj.opacity ?? 1);
   ctx.save();
   ctx.globalAlpha = opacity;
 
@@ -451,7 +463,13 @@ export function paintPage(ctx, pageIndex, scale, { selection = true, search = tr
   paintForms(ctx, pageIndex);
 
   const list = S.overlays.get(pageIndex) || [];
-  for (const obj of list) paintOverlay(ctx, obj, pageIndex);
+  for (const obj of list) {
+    if (obj.type !== 'redact') paintOverlay(ctx, obj, pageIndex);
+  }
+  // Redactions must be fully opaque and cover all other marks in exports.
+  for (const obj of list) {
+    if (obj.type === 'redact') paintOverlay(ctx, obj, pageIndex);
+  }
 
   if (search && S.search.highlights?.has(pageIndex)) {
     const rects = S.search.highlights.get(pageIndex);

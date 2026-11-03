@@ -1,14 +1,14 @@
 {
   "name": "pdf-studio",
   "productName": "PDF Studio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A calm, capable PDF reader, annotator, signer and editor for Windows, macOS and Linux.",
   "main": "main.js",
   "author": "Ben",
   "license": "MIT",
   "private": true,
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "start": "electron .",
@@ -17,11 +17,19 @@
     "package:linux": "electron-packager . \"PDF Studio\" --platform=linux --arch=x64 --out=release --overwrite --asar --icon=build/icon.png --ignore=\"^/(release|dist|build|scripts|docs|node_modules|\\.git|\\.github)\" --prune=true",
     "package:mac": "electron-packager . \"PDF Studio\" --platform=darwin --arch=arm64 --out=release --overwrite --asar --icon=build/icon.icns --ignore=\"^/(release|dist|build|scripts|docs|node_modules|\\.git|\\.github)\" --prune=true",
     "package:mac-intel": "electron-packager . \"PDF Studio\" --platform=darwin --arch=x64 --out=release --overwrite --asar --icon=build/icon.icns --ignore=\"^/(release|dist|build|scripts|docs|node_modules|\\.git|\\.github)\" --prune=true",
-    "package:all": "npm run package:win && npm run package:linux && npm run package:mac && npm run package:mac-intel"
+    "package:all": "npm run package:win && npm run package:linux && npm run package:mac && npm run package:mac-intel",
+    "test": "node scripts/regression.mjs"
   },
   "devDependencies": {
-    "@electron/packager": "^19.0.2",
-    "electron": "^45.1.0",
-    "pdf-lib": "^1.17.1"
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.2.1",
+    "pdf-lib": "^1.17.1",
+    "playwright-core": "^1.64.1"
+  },
+  "overrides": {
+    "@electron/asar": {
+      "glob": "^14.0.2",
+      "minimatch": "^11.0.1"
+    }
   }
 }

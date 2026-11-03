@@ -28,7 +28,7 @@ import {
   escapeHtml,
   nextFrame,
 } from './ui.js';
-import { paintPage } from './paint.js';
+import { paintPage, preloadPageImages } from './paint.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdfjs/pdf.worker.mjs', import.meta.url).href;
 const CMAP_URL = new URL('../vendor/pdfjs/cmaps/', import.meta.url).href;
@@ -178,15 +178,18 @@ export async function loadDocument(bytes, options = {}) {
     standardFontDataUrl: STANDARD_FONT_URL,
     isEvalSupported: false,
     useWorkerFetch: true,
-    onPassword: (updatePassword, reason) => {
-      attempts += 1;
-      if (attempts > 4) {
-        updatePassword(null);
-        return;
-      }
-      passwordPrompt(reason).then((password) => updatePassword(password || null));
-    },
   });
+  task.onPassword = (updatePassword, reason) => {
+    attempts += 1;
+    if (attempts > 4) {
+      task.destroy();
+      return;
+    }
+    passwordPrompt(reason).then((password) => {
+      if (password === null) task.destroy();
+      else updatePassword(password);
+    }).catch(() => task.destroy());
+  };
   loadingTask = task;
 
   try {
@@ -410,6 +413,7 @@ function buildPageShells() {
       renderKey: null,
       renderTask: null,
       rendering: false,
+      needsRender: false,
       textTask: null,
       painted: false,
     };
@@ -450,6 +454,7 @@ export function layoutPages() {
     el.annotation.style.height = '100%';
     el.painted = false;
     if (el.renderKey !== `${S.zoom}`) {
+      if (el.rendering) el.needsRender = true;
       try {
         el.renderTask?.cancel();
       } catch {
@@ -504,7 +509,7 @@ async function pumpRenders() {
     if (S.pageEls[index]?.renderKey === `${S.zoom}`) continue;
     const entry = S.pageEls[index];
     if (!entry || entry.rendering) continue;
-    const renderZoom = S.zoom;
+    entry.needsRender = false;
     entry.rendering = true;
     activeRenders += 1;
     renderPage(index)
@@ -514,7 +519,7 @@ async function pumpRenders() {
       .finally(() => {
         activeRenders -= 1;
         entry.rendering = false;
-        if (S.pageEls[index] === entry && entry.renderKey !== `${S.zoom}` && S.zoom !== renderZoom && nearViewport(index)) scheduleRender(index);
+        if (S.pageEls[index] === entry && entry.needsRender && entry.renderKey !== `${S.zoom}` && nearViewport(index)) scheduleRender(index);
         pumpRenders();
       });
   }
@@ -690,6 +695,7 @@ export async function renderPageToCanvas(index, scale, { overlays = false, backg
     annotationMode: pdfjsLib.AnnotationMode.DISABLE,
   }).promise;
   if (overlays) {
+    await preloadPageImages(index);
     paintPage(ctx, index, scale, { selection: false, search: false, zoom: scale, clear: false });
   }
   if (background) {

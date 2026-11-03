@@ -438,7 +438,7 @@ async function drawOverlay(doc, page, obj, fonts, imageCache) {
     case 'signature':
     case 'initials':
     case 'image': {
-      if (!obj.src) break;
+      if (!obj.src) throw new Error('The image data is missing.');
       let embedded = imageCache.get(obj.src);
       if (!embedded) {
         embedded = await embedImage(doc, obj.src);
@@ -463,7 +463,7 @@ async function drawOverlaysOnPage(doc, page, list, fonts, imageCache) {
     try {
       await drawOverlay(doc, page, obj, fonts, imageCache);
     } catch (error) {
-      console.warn('Could not draw annotation', obj.type, error);
+      throw new Error(`Could not save ${obj.type || 'annotation'}: ${error?.message || error}`);
     }
   }
 }
@@ -483,7 +483,7 @@ function applyFormValues(doc) {
     const value = S.formValues[field.name];
     try {
       const target = form.getFieldMaybe ? form.getFieldMaybe(field.name) : form.getFields().find((f) => f.getName() === field.name);
-      if (!target) continue;
+      if (!target) throw new Error('Field was not found in the PDF.');
       const type = target.constructor?.name || '';
       if (type.includes('TextField') || target.setText) target.setText(String(value ?? ''));
       else if (type.includes('CheckBox') || target.check) {
@@ -492,8 +492,8 @@ function applyFormValues(doc) {
       } else if (type.includes('RadioGroup') || target.select) target.select(String(value ?? ''));
       else if (type.includes('Dropdown')) target.select(String(value ?? ''));
       else if (type.includes('OptionList')) target.select(String(value ?? ''));
-    } catch {
-      /* field could not be set; ignore */
+    } catch (error) {
+      throw new Error(`Could not save form field ${field.name}: ${error?.message || error}`);
     }
   }
 }
@@ -555,20 +555,19 @@ export async function buildPdfBytes({ flattenForms = S.opts.flattenForms, forOps
     if (flattenForms) {
       try {
         src.getForm().flatten();
-      } catch {
-        /* no form, or an unsupported field */
+      } catch (error) {
+        throw new Error(`Could not flatten form fields: ${error?.message || error}`);
       }
     }
     return src.save({ useObjectStreams: true });
   }
 
-  /* Compose path: pages that must be rasterised are replaced by images,
-     which guarantees redactions remove underlying text and rotated pages
-     look exactly like the editor. */
+  /* Rasterize affected pages. Other document structures still require
+     independent inspection before sharing sensitive information. */
   try {
     src.getForm().flatten();
-  } catch {
-    /* ignore */
+  } catch (error) {
+    throw new Error(`Could not flatten form fields: ${error?.message || error}`);
   }
 
   const out = await PDFDocument.create();
@@ -786,7 +785,8 @@ export async function commitAnnotationsForOps() {
   const bytes = await buildPdfBytes({ flattenForms: true, forOps: true });
   const { reloadFromBytes } = await import('./workspace.js');
   await reloadFromBytes(bytes, { clearOverlays: true });
-  markClean();
+  // These changes are only in memory until the user saves the document.
+  markDirty();
   return true;
 }
 

@@ -72,10 +72,10 @@ function selectedPanel(obj) {
     </div>
     ${colorSection(obj)}
     ${typeSection(obj)}
-    <div class="insp-section">
+    ${obj.type === 'redact' ? '' : `<div class="insp-section">
       <div class="insp-label">Appearance</div>
       <div class="insp-row"><span class="insp-key">Opacity</span><input type="range" min="10" max="100" step="5" value="${Math.round((obj.opacity ?? 1) * 100)}" data-opacity></div>
-    </div>
+    </div>`}
     <div class="insp-section">
       <div class="insp-label">Arrange</div>
       <div class="insp-grid">

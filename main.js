@@ -14,6 +14,7 @@ const {
 const path = require('node:path');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
+const { randomUUID } = require('node:crypto');
 const { pathToFileURL } = require('node:url');
 
 const ROOT = __dirname;
@@ -39,6 +40,21 @@ let forceClose = false;
 let closePending = false;
 let quitAfterClose = false;
 let pendingOpenPath = null;
+const openedPdfPaths = new Set();
+
+function pathKey(filePath) {
+  const absolute = path.resolve(filePath);
+  return process.platform === 'win32' ? absolute.toLowerCase() : absolute;
+}
+
+function trustedHandle(channel, handler) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+      throw new Error('Untrusted application request');
+    }
+    return handler(event, ...args);
+  });
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -90,7 +106,7 @@ function createWindow() {
       preload: path.join(ROOT, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
       spellcheck: false,
       devTools: !app.isPackaged,
     },
@@ -206,14 +222,22 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
-    session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-      callback(permission === 'media');
+    session.defaultSession.setPermissionRequestHandler((wc, permission, callback, details) => {
+      const types = details.mediaTypes || [];
+      const allowed = wc === mainWindow?.webContents && permission === 'media' &&
+        details.isMainFrame && details.requestingUrl?.startsWith('app://pdfstudio/') &&
+        types.length > 0 && types.every((type) => type === 'video');
+      callback(Boolean(allowed));
     });
-    session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media');
+    session.defaultSession.setPermissionCheckHandler((wc, permission, origin, details) =>
+      wc === mainWindow?.webContents && permission === 'media' && origin === 'app://pdfstudio' &&
+      details.isMainFrame && details.mediaType === 'video'
+    );
 
     protocol.handle('app', async (request) => {
       try {
         const url = new URL(request.url);
+        if (url.hostname !== 'pdfstudio') return new Response('Forbidden', { status: 403 });
         const relative = decodeURIComponent(url.pathname);
         const filePath = path.resolve(APP_DIR, `.${relative}`);
         if (!filePath.startsWith(APP_DIR + path.sep) && filePath !== APP_DIR) {
@@ -262,7 +286,7 @@ function ensurePdfExtension(filePath) {
   return filePath;
 }
 
-ipcMain.handle('dialog:open-pdf', async () => {
+trustedHandle('dialog:open-pdf', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Open PDF',
     properties: ['openFile'],
@@ -275,7 +299,7 @@ ipcMain.handle('dialog:open-pdf', async () => {
   return readPdfFile(result.filePaths[0]);
 });
 
-ipcMain.handle('dialog:open-pdfs', async () => {
+trustedHandle('dialog:open-pdfs', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Choose PDFs',
     properties: ['openFile', 'multiSelections'],
@@ -286,7 +310,9 @@ ipcMain.handle('dialog:open-pdfs', async () => {
 });
 
 async function readPdfFile(filePath) {
+  if (typeof filePath !== 'string' || !/\.pdf$/i.test(filePath)) throw new Error('Please choose a PDF file.');
   const data = await fsp.readFile(filePath);
+  openedPdfPaths.add(pathKey(filePath));
   return {
     path: filePath,
     name: path.basename(filePath),
@@ -295,15 +321,18 @@ async function readPdfFile(filePath) {
   };
 }
 
-ipcMain.handle('file:read', async (_event, filePath) => {
+trustedHandle('file:read', async (_event, filePath) => {
   if (typeof filePath !== 'string') throw new Error('Invalid path');
   return readPdfFile(filePath);
 });
 
-ipcMain.handle('file:save', async (_event, payload) => {
+trustedHandle('file:save', async (_event, payload) => {
   const { data, path: existingPath, suggestedName, saveAs, extension } = payload;
   if (!data) throw new Error('No data to save');
   let target = saveAs ? null : existingPath;
+  if (target && (typeof target !== 'string' || !openedPdfPaths.has(pathKey(target)))) {
+    throw new Error('Choose where to save this document first.');
+  }
   if (!target) {
     const isPdf = !extension || extension === 'pdf';
     const result = await dialog.showSaveDialog(mainWindow, {
@@ -316,11 +345,20 @@ ipcMain.handle('file:save', async (_event, payload) => {
     if (result.canceled || !result.filePath) return { canceled: true };
     target = isPdf ? ensurePdfExtension(result.filePath) : result.filePath;
   }
-  await fsp.writeFile(target, Buffer.from(data));
+  // Write beside the target and replace it only after the complete write succeeds.
+  const tempPath = path.join(path.dirname(target), `.${path.basename(target)}.${randomUUID()}.tmp`);
+  try {
+    await fsp.writeFile(tempPath, Buffer.from(data), { flag: 'wx' });
+    await fsp.rename(tempPath, target);
+  } catch (error) {
+    await fsp.unlink(tempPath).catch(() => {});
+    throw error;
+  }
+  if (/\.pdf$/i.test(target)) openedPdfPaths.add(pathKey(target));
   return { canceled: false, path: target, name: path.basename(target) };
 });
 
-ipcMain.handle('file:save-text', async (_event, payload) => {
+trustedHandle('file:save-text', async (_event, payload) => {
   const { text, suggestedName, extension = 'txt' } = payload;
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Export text',
@@ -335,7 +373,7 @@ ipcMain.handle('file:save-text', async (_event, payload) => {
   return { canceled: false, path: target };
 });
 
-ipcMain.handle('images:save', async (_event, payload) => {
+trustedHandle('images:save', async (_event, payload) => {
   const { files, suggestedName } = payload;
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Choose a folder for the images',
@@ -359,31 +397,31 @@ ipcMain.handle('images:save', async (_event, payload) => {
   return { canceled: false, dir, count };
 });
 
-ipcMain.handle('shell:external', async (_event, url) => {
+trustedHandle('shell:external', async (_event, url) => {
   if (typeof url !== 'string' || !/^(https?:|mailto:)/i.test(url)) return false;
   await shell.openExternal(url);
   return true;
 });
 
-ipcMain.handle('shell:show-item', async (_event, filePath) => {
+trustedHandle('shell:show-item', async (_event, filePath) => {
   if (typeof filePath !== 'string') return;
   shell.showItemInFolder(filePath);
 });
 
-ipcMain.handle('window:minimize', () => mainWindow?.minimize());
-ipcMain.handle('window:maximize', () => {
+trustedHandle('window:minimize', () => mainWindow?.minimize());
+trustedHandle('window:maximize', () => {
   if (!mainWindow) return false;
   if (mainWindow.isMaximized()) mainWindow.unmaximize();
   else mainWindow.maximize();
   return mainWindow.isMaximized();
 });
-ipcMain.handle('window:close', () => mainWindow?.close());
-ipcMain.handle('window:state', () => ({ maximized: mainWindow?.isMaximized() ?? false }));
-ipcMain.handle('window:theme', (_event, theme) => {
+trustedHandle('window:close', () => mainWindow?.close());
+trustedHandle('window:state', () => ({ maximized: mainWindow?.isMaximized() ?? false }));
+trustedHandle('window:theme', (_event, theme) => {
   mainWindow?.setBackgroundColor(theme === 'dark' ? '#14120f' : '#f4f0e8');
 });
 
-ipcMain.handle('app:get-info', () => ({
+trustedHandle('app:get-info', () => ({
   version: app.getVersion(),
   electron: process.versions.electron,
   chrome: process.versions.chrome,
@@ -391,15 +429,15 @@ ipcMain.handle('app:get-info', () => ({
   arch: process.arch,
 }));
 
-ipcMain.handle('app:set-dirty', (_event, dirty) => {
+trustedHandle('app:set-dirty', (_event, dirty) => {
   isDirty = Boolean(dirty);
 });
 
-ipcMain.handle('app:set-title', (_event, title) => {
+trustedHandle('app:set-title', (_event, title) => {
   mainWindow?.setTitle(title || 'PDF Studio');
 });
 
-ipcMain.handle('app:close-response', (_event, shouldClose) => {
+trustedHandle('app:close-response', (_event, shouldClose) => {
   closePending = false;
   if (shouldClose) {
     forceClose = true;

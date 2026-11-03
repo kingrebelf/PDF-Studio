@@ -5,7 +5,7 @@
 
 **Read it. Sign it. Make it yours.**
 
-A desktop PDF reader and editor for Windows, macOS, and Linux. Work with documents on your own computer, with a focused reading view and an editing workspace when you need it.
+A desktop PDF reader and editor for Windows, macOS, and Linux. Read documents, add a signature in a few clicks, fill forms, and keep your work on your own computer.
 
 [Get started](#get-started) · [Features](#features) · [Screenshots](#screenshots) · [Building](#build-a-portable-app) · [Support the project](#support-pdf-studio)
 
@@ -23,6 +23,17 @@ A desktop PDF reader and editor for Windows, macOS, and Linux. Work with documen
 
 PDF Studio runs locally. Documents and saved signatures stay on your computer. Opening the optional donation link or a link in a PDF uses your web browser.
 
+## Add your signature
+
+1. Open a PDF and switch to **Edit**.
+2. Choose **Signature** in the left toolbar, then click where it belongs on the page.
+3. Draw, type, upload an image, or capture your signature with a camera. Select **Use signature**, then move or resize it on the page.
+4. Save the document. Your signature is stored locally for reuse, and you can delete it from the signature dialog.
+
+![The signature dialog showing options to draw, type, upload or use a camera](docs/screenshots/signature.png)
+
+These are visual electronic signatures. PDF Studio does not create certificate-based digital signatures or verify document authenticity. Saved signatures are stored locally in the app's profile, without separate encryption.
+
 ## Screenshots
 
 <details>
@@ -32,17 +43,17 @@ PDF Studio runs locally. Documents and saved signatures stay on your computer. O
 
 </details>
 
-The screenshots show the included fictional sample document.
+The screenshots show the included fictional sample document. Its fifth page is deliberately rotated 90 degrees to demonstrate handling of rotated pages.
 
 ## Get started
 
 ### Downloading a build
 
-**There is currently no published installer or release download in this repository.** The `PDF-Studio-1.0.0-source.zip` file is an older source snapshot; use the source files on the main branch for the latest fixes. You can run or package them using the instructions below. When downloadable builds are published, they will appear on the [Releases page](https://github.com/kingrebelf/PDF-Studio/releases).
+Download the archive for your operating system from the [Releases page](https://github.com/kingrebelf/PDF-Studio/releases), extract it, and open the application inside. These are portable builds, so no installer is needed. If no build is available for your platform, follow the source instructions below. The `PDF-Studio-1.0.0-source.zip` file is an older snapshot; use the main branch for current source.
 
 ### Run from source
 
-Install [Node.js](https://nodejs.org/) 22 or later and Git, then run:
+Install [Node.js](https://nodejs.org/) 22.12 or later and Git, then run:
 
 ```bash
 git clone https://github.com/kingrebelf/PDF-Studio.git
@@ -87,15 +98,17 @@ For the complete shortcut list, use the app's **More** menu.
 
 ### Saving and redaction
 
-Edits are overlays until saved. Pages with redactions are rasterized to remove underlying content; annotated rotated pages may also be rasterized. This can change text selectability and image quality. Review the saved copy carefully, particularly before sharing a redacted document.
+Edits are overlays until saved. Pages with redactions are rasterized so their original page content is not retained as searchable text on those pages; annotated rotated pages may also be rasterized. This can change text selectability and image quality. Redaction does not automatically sanitize metadata, attachments, other pages, or all hidden document information. Inspect and independently verify the saved copy before sharing sensitive information.
 
 ## Development
 
 ```bash
 npm run check
+npm test
+npm audit
 ```
 
-The check parses application modules, checks named imports and verifies required assets. See [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout, testing and contribution guidance. Automated checks and platform packaging are configured in GitHub Actions.
+The static check parses application modules, checks named imports and verifies required assets. The regression test opens the app in an isolated profile and checks signatures, redaction output and save behavior. Linux requires a graphical display (or `xvfb-run -a npm test`). See [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout, testing and contribution guidance. Automated checks and platform packaging are configured in GitHub Actions.
 
 ## Support PDF Studio
 

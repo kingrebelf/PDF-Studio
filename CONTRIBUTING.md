@@ -8,12 +8,14 @@ Thanks for helping improve PDF Studio. Bug reports, documentation improvements a
 
 ## Develop locally
 
-Install Node.js 22 or later, then:
+Install Node.js 22.12 or later, then:
 
 ```bash
 npm ci
 npm start
 npm run check
+npm test
+npm audit
 ```
 
 Try the bundled sample as well as a representative PDF when changing rendering or editing behavior. For a pull request, describe the change and how you tested it. Include screenshots for visible interface changes.

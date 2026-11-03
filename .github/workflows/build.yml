@@ -22,6 +22,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: npm audit --audit-level=moderate
+      - run: xvfb-run -a npm test
 
   package:
     name: Package (${{ matrix.label }})
@@ -55,10 +57,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ${{ matrix.script }}
+      # Archive on the target OS before uploading: artifact uploads otherwise
+      # discard executable permissions and macOS framework symlinks.
+      - name: Archive Windows build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path release/* -DestinationPath "${{ matrix.artifact }}.zip"
+      - name: Archive Unix build
+        if: runner.os != 'Windows'
+        shell: bash
+        run: (cd release && zip -qry "../${{ matrix.artifact }}.zip" .)
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: release/
+          path: ${{ matrix.artifact }}.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -73,15 +85,8 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Zip each platform folder
-        run: |
-          cd artifacts
-          for dir in */; do
-            name="${dir%/}"
-            (cd "$dir" && zip -qr "../${name}.zip" .)
-          done
       - uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip
+          files: artifacts/*/*.zip
           generate_release_notes: true
 

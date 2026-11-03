@@ -154,6 +154,7 @@ export function openSignatureDialog({ title = 'Add your signature', subtitle = '
     let settled = false;
     let activeTab = 'draw';
     let stream = null;
+    let cameraRequest = 0;
     let lastCapture = null;
     let drawMode = false;
     let drawn = false;
@@ -340,8 +341,7 @@ export function openSignatureDialog({ title = 'Add your signature', subtitle = '
           bodyEl.querySelectorAll('[data-pane]').forEach((pane) => {
             pane.hidden = pane.dataset.pane !== tab;
           });
-          if (tab === 'camera') startCamera();
-          else stopCamera();
+          if (tab !== 'camera') stopCamera();
           updateUseState();
         };
 
@@ -398,11 +398,17 @@ export function openSignatureDialog({ title = 'Add your signature', subtitle = '
 
         async function startCamera() {
           if (stream) return;
+          const request = ++cameraRequest;
           try {
-            stream = await navigator.mediaDevices.getUserMedia({
+            const acquired = await navigator.mediaDevices.getUserMedia({
               video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
               audio: false,
             });
+            if (request !== cameraRequest || settled || activeTab !== 'camera') {
+              acquired.getTracks().forEach((track) => track.stop());
+              return;
+            }
+            stream = acquired;
             video.srcObject = stream;
             cameraEmpty.hidden = true;
             captureButton.disabled = false;
@@ -418,6 +424,7 @@ export function openSignatureDialog({ title = 'Add your signature', subtitle = '
         }
 
         function stopCamera() {
+          cameraRequest += 1;
           if (stream) {
             stream.getTracks().forEach((track) => track.stop());
             stream = null;
@@ -532,6 +539,7 @@ export function openSignatureDialog({ title = 'Add your signature', subtitle = '
     };
 
     function stopCameraIfAny() {
+      cameraRequest += 1;
       const video = $('#camera-video');
       if (video?.srcObject) {
         video.srcObject.getTracks().forEach((track) => track.stop());
