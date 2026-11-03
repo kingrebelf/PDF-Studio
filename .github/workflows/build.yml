@@ -57,6 +57,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ${{ matrix.script }}
+      - name: Test packaged Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PDF_STUDIO_EXECUTABLE = (Resolve-Path 'release/PDF Studio-win32-x64/PDF Studio.exe').Path
+          npm test
       # Archive on the target OS before uploading: artifact uploads otherwise
       # discard executable permissions and macOS framework symlinks.
       - name: Archive Windows build

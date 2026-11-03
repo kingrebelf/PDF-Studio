@@ -17,9 +17,10 @@ try {
   const encoded = Buffer.from(await fixture.save()).toString('base64');
   const fixturePath = path.join(temp, 'opened.pdf');
   await fs.writeFile(fixturePath, Buffer.from(encoded, 'base64'));
-  const args = ['.', `--user-data-dir=${temp}`, '--use-fake-device-for-media-stream'];
+  const executablePath = process.env.PDF_STUDIO_EXECUTABLE;
+  const args = [...(executablePath ? [] : ['.']), `--user-data-dir=${temp}`, '--use-fake-device-for-media-stream'];
   if (process.platform === 'linux' && process.env.CI) args.push('--no-sandbox');
-  app = await electron.launch({ args, timeout: 45000 });
+  app = await electron.launch({ executablePath, args, timeout: 45000 });
   const page = await app.firstWindow();
   await page.waitForFunction(() => window.__pdfstudio?.booted);
   await page.locator('#launcher-continue').click();
