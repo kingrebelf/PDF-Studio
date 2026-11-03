@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob: mediastream:">
+  <title>PDF Studio</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body data-theme="light" data-mode="view" data-doc="false">
+  <div id="app">
+    <header id="titlebar" class="titlebar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 28 28" aria-hidden="true">
+          <path d="M6.4 3.8h10.2l5 5v15.4H6.4z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M16.6 3.8v5h5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M9.6 16.2c1.9-2.5 3.3-4 4-3.7 1.2.6-1.6 4.7-.2 5 1.1.2 2.1-1.5 3-2.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name">PDF <em>Studio</em></span>
+      </div>
+
+      <div class="title-doc">
+        <span id="doc-name">No document</span>
+        <span id="dirty-dot" class="dirty-dot" hidden title="Unsaved changes"></span>
+      </div>
+
+      <div class="mode-switch" id="mode-switch" role="tablist" aria-label="Workspace mode">
+        <button type="button" data-mode="view" class="active" role="tab" aria-selected="true">
+          <span data-icon="eye"></span> View
+        </button>
+        <button type="button" data-mode="edit" role="tab" aria-selected="false">
+          <span data-icon="pen"></span> Edit
+        </button>
+      </div>
+
+      <div class="title-spacer"></div>
+
+      <div class="title-actions">
+        <button id="btn-undo" class="icon-btn edit-only" title="Undo (Ctrl+Z)" data-icon="undo" disabled></button>
+        <button id="btn-redo" class="icon-btn edit-only" title="Redo (Ctrl+Shift+Z)" data-icon="redo" disabled></button>
+        <span class="v-sep edit-only"></span>
+        <button id="btn-open" class="btn" title="Open PDF (Ctrl+O)">
+          <span data-icon="folder-open"></span><span class="btn-label">Open</span>
+        </button>
+        <button id="btn-save" class="btn primary" title="Save (Ctrl+S)" disabled>
+          <span data-icon="save"></span><span class="btn-label">Save</span>
+        </button>
+        <button id="btn-print" class="icon-btn" title="Print (Ctrl+P)" data-icon="printer" disabled></button>
+        <button id="btn-search" class="icon-btn" title="Find in document (Ctrl+F)" data-icon="search" disabled></button>
+        <button id="btn-appearance" class="icon-btn" title="Dark PDF" data-icon="moon" disabled></button>
+        <button id="btn-theme" class="icon-btn" title="App theme" data-icon="sun"></button>
+        <button id="btn-more" class="icon-btn" title="More" data-icon="dots"></button>
+      </div>
+
+      <div class="window-controls" id="window-controls">
+        <button type="button" class="win-btn" data-win="minimize" title="Minimize" data-icon="win-min"></button>
+        <button type="button" class="win-btn" data-win="maximize" title="Maximize" data-icon="win-max"></button>
+        <button type="button" class="win-btn close" data-win="close" title="Close" data-icon="win-close"></button>
+      </div>
+    </header>
+
+    <div id="body" class="body">
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-head">
+          <div class="side-tabs" role="tablist">
+            <button type="button" class="side-tab active" data-tab="pages" role="tab">Pages <span id="page-count-badge" class="count-badge">0</span></button>
+            <button type="button" class="side-tab" data-tab="outline" role="tab">Contents</button>
+          </div>
+          <button type="button" id="btn-hide-sidebar" class="icon-btn tiny" title="Hide sidebar" data-icon="panel-left"></button>
+        </div>
+        <div id="thumb-list" class="thumb-list" aria-label="Page thumbnails"></div>
+        <div id="outline-list" class="outline-list" hidden aria-label="Table of contents">
+          <div class="empty-note">This document has no bookmarks.</div>
+        </div>
+        <div class="sidebar-foot">
+          <button type="button" id="btn-sidebar-add" class="btn subtle small" disabled>
+            <span data-icon="plus"></span> Add pages
+          </button>
+        </div>
+      </aside>
+
+      <button type="button" id="btn-show-sidebar" class="sidebar-reveal" title="Show sidebar" data-icon="panel-left" hidden></button>
+
+      <nav id="toolrail" class="toolrail" aria-label="Editing tools"></nav>
+
+      <main id="main" class="main">
+        <div id="contextbar" class="contextbar" hidden></div>
+
+        <div id="viewer-wrap" class="viewer-wrap">
+          <div id="welcome" class="welcome">
+            <div class="welcome-card">
+              <div class="welcome-art" aria-hidden="true">
+                <div class="art-glow"></div>
+                <div class="art-page">
+                  <div class="art-page-kicker">AGREEMENT</div>
+                  <div class="art-line w70"></div>
+                  <div class="art-line w92"></div>
+                  <div class="art-line w84"></div>
+                  <div class="art-line w60"></div>
+                  <div class="art-sign">
+                    <svg viewBox="0 0 180 54"><path d="M8 39c14-22 25-30 31-25 7 6-9 31 0 33 8 2 15-15 24-28 5-7 9-4 8 3-2 14-8 24-3 26 6 2 13-11 20-20 5-6 8-3 7 4-1 8-3 13 0 14 5 1 12-7 18-13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>
+                    <div class="art-sign-line"></div>
+                  </div>
+                  <div class="art-stamp">SIGNED</div>
+                </div>
+                <div class="art-chip chip-view"><span data-icon="eye"></span> View</div>
+                <div class="art-chip chip-sign"><span data-icon="signature"></span> Sign</div>
+                <div class="art-chip chip-edit"><span data-icon="pen"></span> Edit</div>
+              </div>
+
+              <div class="welcome-copy">
+                <p class="eyebrow">A calmer way to work with PDFs</p>
+                <h1>Read it. Sign it.<br><em>Make it yours.</em></h1>
+                <p class="welcome-sub">A focused reader and a genuinely capable editor in one desktop app. No account, no cloud, no clutter — every page stays on your machine.</p>
+                <div class="welcome-actions">
+                  <button type="button" id="welcome-open" class="btn primary large">
+                    <span data-icon="folder-open"></span> Open a PDF
+                  </button>
+                  <button type="button" id="welcome-sample" class="btn large ghost">
+                    <span data-icon="file"></span> Try the sample
+                  </button>
+                </div>
+                <div class="drop-hint">or drop a PDF anywhere in this window</div>
+
+                <div id="recent-wrap" class="recent-wrap" hidden>
+                  <h3>Recent</h3>
+                  <div id="recent-list" class="recent-list"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="welcome-features">
+              <div class="feature">
+                <span class="feature-icon" data-icon="eye"></span>
+                <h3>Read without noise</h3>
+                <p>Sharp rendering, a real table of contents, text selection, search and a dark-paper mode for late nights.</p>
+              </div>
+              <div class="feature">
+                <span class="feature-icon" data-icon="signature"></span>
+                <h3>Sign your way</h3>
+                <p>Draw, type, upload, or capture a signature with your camera. Reuse it anywhere, or leave a sign-here box for someone else.</p>
+              </div>
+              <div class="feature">
+                <span class="feature-icon" data-icon="sliders"></span>
+                <h3>Edit the whole document</h3>
+                <p>Annotate, redact, fill forms, rotate and reorder pages, add watermarks and Bates numbers, then export exactly what you need.</p>
+              </div>
+            </div>
+            <div class="welcome-foot">PDF Studio · local-first · works offline</div>
+          </div>
+
+          <div id="scroll" class="scroll" hidden>
+            <div id="pages" class="pages"></div>
+          </div>
+
+          <div id="search-popover" class="search-popover" hidden>
+            <span class="search-icon" data-icon="search"></span>
+            <input id="search-input" type="search" placeholder="Find in document…" autocomplete="off" spellcheck="false">
+            <span id="search-count" class="search-count">0 results</span>
+            <button type="button" id="search-prev" class="icon-btn tiny" title="Previous match" data-icon="chevron-up"></button>
+            <button type="button" id="search-next" class="icon-btn tiny" title="Next match" data-icon="chevron-down"></button>
+            <button type="button" id="search-close" class="icon-btn tiny" title="Close" data-icon="x"></button>
+          </div>
+
+          <div id="drop-overlay" class="drop-overlay" hidden>
+            <div class="drop-card">
+              <span data-icon="file-plus"></span>
+              <strong>Drop to open</strong>
+              <span>PDF files only</span>
+            </div>
+          </div>
+
+          <div id="busy" class="busy" hidden>
+            <div class="busy-card">
+              <div class="spinner"></div>
+              <div class="busy-title" id="busy-title">Working…</div>
+              <div class="busy-sub" id="busy-sub">This will only take a moment.</div>
+              <div class="progress" id="busy-progress"><span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <footer id="statusbar" class="statusbar" hidden>
+          <div class="status-left">
+            <button type="button" id="btn-prev-page" class="icon-btn tiny" title="Previous page" data-icon="chevron-left"></button>
+            <div class="page-field">
+              <input id="page-input" type="text" inputmode="numeric" value="1" aria-label="Page number">
+              <span id="page-total">/ 0</span>
+            </div>
+            <button type="button" id="btn-next-page" class="icon-btn tiny" title="Next page" data-icon="chevron-right"></button>
+            <span id="doc-meta" class="status-meta"></span>
+          </div>
+          <div class="status-center">
+            <button type="button" id="btn-zoom-out" class="icon-btn tiny" title="Zoom out" data-icon="minus"></button>
+            <button type="button" id="zoom-label" class="zoom-label" title="Reset to 100%">100%</button>
+            <button type="button" id="btn-zoom-in" class="icon-btn tiny" title="Zoom in" data-icon="plus"></button>
+            <span class="v-sep"></span>
+            <button type="button" id="btn-fit-width" class="icon-btn tiny" title="Fit width" data-icon="fit-width"></button>
+            <button type="button" id="btn-fit-page" class="icon-btn tiny" title="Fit page" data-icon="fit-page"></button>
+          </div>
+          <div class="status-right">
+            <span id="status-hint">Read-only view</span>
+          </div>
+        </footer>
+      </main>
+
+      <aside id="inspector" class="inspector" hidden>
+        <div class="inspector-head">
+          <span id="inspector-title">Properties</span>
+          <button type="button" id="btn-hide-inspector" class="icon-btn tiny" title="Hide properties" data-icon="x"></button>
+        </div>
+        <div id="inspector-body" class="inspector-body"></div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="launcher" class="launcher" role="dialog" aria-modal="true" aria-labelledby="launcher-title">
+    <div class="launcher-card">
+      <div class="launcher-brand">PDF <em>Studio</em></div>
+      <h1 id="launcher-title">Welcome to PDF Studio</h1>
+      <p>Read, edit and sign PDFs on your computer.</p>
+      <p>If you enjoy PDF Studio, consider supporting its development with a donation.</p>
+      <div class="launcher-actions">
+        <button id="launcher-donate" class="btn" type="button">Donate</button>
+        <button id="launcher-continue" class="btn primary" type="button">Continue to PDF Studio</button>
+      </div>
+      <small>Donations are optional. Continue without donating at any time.</small>
+    </div>
+  </div>
+  <div id="modal-root" class="modal-root"></div>
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <div id="menu-root" class="menu-root"></div>
+  <div id="print-root" class="print-root"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

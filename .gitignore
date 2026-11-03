@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Packaged builds
+release/
+dist/
+out/
+
+# Local test harnesses and scratch files
+test*.mjs
+checkpdf.mjs
+shots.mjs
+render-icon.mjs
+*.log
+.nyc_output/
+coverage/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Environment
+.env
+.env.*
