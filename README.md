@@ -49,7 +49,7 @@ The screenshots show the included fictional sample document. Its fifth page is d
 
 ### Downloading a build
 
-Download the archive for your operating system from the [Releases page](https://github.com/kingrebelf/PDF-Studio/releases), extract it, and open the application inside. These are portable builds, so no installer is needed. If no build is available for your platform, follow the source instructions below. The `PDF-Studio-1.0.0-source.zip` file is an older snapshot; use the main branch for current source.
+Download the archive for your operating system from the [Releases page](https://github.com/kingrebelf/PDF-Studio/releases), extract it, and open the application inside. These are portable builds, so no installer is needed. The release also includes SHA-256 checksums for checking downloaded files. If no build is available for your platform, follow the source instructions below. The `PDF-Studio-1.0.0-source.zip` file is an older snapshot; use the main branch for current source.
 
 ### Run from source
 
