@@ -28,7 +28,7 @@ PDF Studio runs locally. Documents and saved signatures stay on your computer. O
 1. Open a PDF and switch to **Edit**.
 2. Choose **Signature** in the left toolbar, then click where it belongs on the page.
 3. Draw, type, upload an image, or capture your signature with a camera. Select **Use signature**, then move or resize it on the page.
-4. Save the document. Your signature is stored locally for reuse, and you can delete it from the signature dialog.
+4. Save the document. Your signature is stored locally for reuse, and you can delete the stored copy from the signature dialog. Deleting it there does not remove signatures already placed in documents.
 
 ![The signature dialog showing options to draw, type, upload or use a camera](docs/screenshots/signature.png)
 

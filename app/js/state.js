@@ -247,8 +247,9 @@ export function loadSignatures() {
 export function storeSignatures(list) {
   try {
     localStorage.setItem('pdfstudio.signatures', JSON.stringify(list.slice(0, 8)));
+    return true;
   } catch {
-    /* ignore */
+    return false;
   }
 }
 

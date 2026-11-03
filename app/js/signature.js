@@ -132,7 +132,7 @@ async function renderTypedSignature(text, color = '#1f2f5c') {
 
 function addSignatureToStore(signature) {
   const list = loadSignatures();
-  if (list.some((item) => item.dataUrl === signature.dataUrl)) return;
+  if (list.some((item) => item.dataUrl === signature.dataUrl)) return true;
   list.unshift({
     id: signature.id,
     dataUrl: signature.dataUrl,
@@ -140,11 +140,11 @@ function addSignatureToStore(signature) {
     aspect: signature.aspect,
     createdAt: signature.createdAt,
   });
-  storeSignatures(list.slice(0, 8));
+  return storeSignatures(list.slice(0, 8));
 }
 
 export function saveSignature(signature) {
-  addSignatureToStore(signature);
+  if (!addSignatureToStore(signature)) toast('Signature is available for this session but could not be saved for reuse.', 'warning');
   S.activeSignature = signature;
   return signature;
 }
@@ -513,7 +513,11 @@ export function openSignatureDialog({ title = 'Add your signature', subtitle = '
             event.stopPropagation();
             const id = button.dataset.delSig;
             const next = loadSignatures().filter((item) => item.id !== id);
-            storeSignatures(next);
+            if (!storeSignatures(next)) {
+              toast('The signature could not be removed from local storage.', 'error');
+              return;
+            }
+            if (S.activeSignature?.id === id) S.activeSignature = null;
             nodeFromId(id)?.remove();
             toast('Signature removed.', 'info');
             if (!bodyEl.querySelector('.saved-sig')) bodyEl.querySelector('.sig-saved-block')?.remove();

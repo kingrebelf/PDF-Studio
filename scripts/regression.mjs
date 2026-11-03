@@ -57,6 +57,13 @@ try {
   const xobjects = signedDoc.getPage(0).node.Resources().lookup(PDFName.of('XObject'), PDFDict);
   assert.ok(xobjects && xobjects.keys().length > 0, 'signature image is embedded');
 
+  await page.evaluate(() => { window.deleteSignatureTest = import('./js/signature.js').then(m => m.openSignatureDialog()); });
+  await page.locator('[data-del-sig]').first().click();
+  assert.equal(await page.evaluate(() => window.__pdfstudio.S.activeSignature), null, 'deleting a saved signature clears it from the active session');
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('pdfstudio.signatures')).length), 0, 'signature is removed from local storage');
+  await page.locator('.modal-foot [data-close]').click();
+  await page.evaluate(() => window.deleteSignatureTest);
+
   const missingImageRejected = await page.evaluate(async () => {
     const { S } = window.__pdfstudio;
     const previous = S.overlays;
